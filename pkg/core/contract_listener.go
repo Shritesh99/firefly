@@ -25,6 +25,20 @@ import (
 	"github.com/hyperledger/firefly-common/pkg/i18n"
 )
 
+type PreparePrimaryTx struct {
+	TxID             string
+	PrimaryNetworkId string
+	NetworkID        string
+	Url              string
+	InvocationID     string
+	Args             interface{}
+}
+
+type ConfirmNetworkTx struct {
+	TxID    string
+	Success bool
+}
+
 type ContractListener struct {
 	ID        *fftypes.UUID            `ffstruct:"ContractListener" json:"id,omitempty" ffexcludeinput:"true"`
 	Interface *fftypes.FFIReference    `ffstruct:"ContractListener" json:"interface,omitempty" ffexcludeinput:"postContractAPIListeners"`
@@ -37,6 +51,12 @@ type ContractListener struct {
 	Signature string                   `ffstruct:"ContractListener" json:"signature" ffexcludeinput:"true"`
 	Topic     string                   `ffstruct:"ContractListener" json:"topic,omitempty"`
 	Options   *ContractListenerOptions `ffstruct:"ContractListener" json:"options,omitempty"`
+	CCM       interface {
+		ProcessTx(ppTx PreparePrimaryTx)
+	}
+	CNM interface {
+		ProcessTx(pnTx ConfirmNetworkTx)
+	}
 }
 
 type ContractListenerWithStatus struct {
