@@ -1,4 +1,4 @@
-// Copyright © 2022 Kaleido, Inc.
+// Copyright © 2023 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -38,18 +38,21 @@ func (ccm *CrossChainManager) ProcessTx(ppTx core.PreparePrimaryTx) {
 	values := map[string]map[string]interface{}{
 		"input": {
 			"txId":             ppTx.TxID,
-			"primaryNetworkId": ppTx.PrimaryNetworkId,
+			"primaryNetworkId": ppTx.PrimaryNetworkID,
 			"networkId":        ppTx.NetworkID,
 			"invocationId":     ppTx.InvocationID,
 			"args":             ppTx.Args,
 		},
 	}
-	json_data, err := json.Marshal(values)
+	jsonData, err := json.Marshal(values)
 
 	if err != nil {
 		log.Fatal(err)
 	}
-	url := ppTx.Url + "/api/v1/namespaces/default/apis/cross-network/invoke/doNetwork"
+	url := ppTx.URL + "/api/v1/namespaces/default/apis/cross-network/invoke/doNetwork"
 
-	http.Post(url, "application/json", bytes.NewBuffer(json_data))
+	_, err = http.Post(url, "application/json", bytes.NewBuffer(jsonData)) //nolint
+	if err != nil {
+		log.Fatal(err)
+	}
 }

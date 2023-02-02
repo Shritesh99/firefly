@@ -1,4 +1,4 @@
-// Copyright © 2022 Kaleido, Inc.
+// Copyright © 2023 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -125,8 +125,7 @@ func (em *eventManager) BlockchainEvent(event *blockchain.EventWithSubscription)
 			})
 
 			if chainEvent.Name == "PrimaryTxStatus" {
-				switch status := chainEvent.Output.GetString("PrimaryTransactionStatusType"); status {
-				case "PrimaryTransactionStatusType.PRIMARY_TRANSACTION_COMMITTED":
+				if chainEvent.Output.GetString("PrimaryTransactionStatusType") == "PrimaryTransactionStatusType.PRIMARY_TRANSACTION_COMMITTED" {
 					changeStatusNetwork(chainEvent.Output.GetString("networkUrl"), chainEvent.Output.GetString("txId"), 4)
 				}
 			}
@@ -141,9 +140,12 @@ func (em *eventManager) BlockchainEvent(event *blockchain.EventWithSubscription)
 							"txId": chainEvent.Output.GetString("txId"),
 						},
 					}
-					json_data, _ := json.Marshal(values)
+					jsonData, _ := json.Marshal(values)
 					url := chainEvent.Output.GetString("primaryNetworkUrl") + "/api/v1/namespaces/default/apis/cross-chain/invoke/confirmDoCross"
-					http.Post(url, "application/json", bytes.NewBuffer(json_data))
+					_, err = http.Post(url, "application/json", bytes.NewBuffer(jsonData)) //nolint
+					if err != nil {
+						fmt.Print(err.Error())
+					}
 				case "PrimaryTransactionStatusType.NETWORK_TRANSACTION_COMMITTED":
 					changeStatusPrimary(chainEvent.Output.GetString("primaryNetworkUrl"), chainEvent.Output.GetString("txId"), 5)
 				}
@@ -152,9 +154,9 @@ func (em *eventManager) BlockchainEvent(event *blockchain.EventWithSubscription)
 			if chainEvent.Name == "PreparePrimaryTransaction" {
 				ppTx := core.PreparePrimaryTx{
 					TxID:             chainEvent.Output.GetString("txId"),
-					PrimaryNetworkId: chainEvent.Output.GetString("primaryNetworkId"),
+					PrimaryNetworkID: chainEvent.Output.GetString("primaryNetworkId"),
 					NetworkID:        chainEvent.Output.GetString("networkId"),
-					Url:              chainEvent.Output.GetString("url"),
+					URL:              chainEvent.Output.GetString("url"),
 					InvocationID:     chainEvent.Output.GetString("invocationId"),
 					Args:             chainEvent.Output.GetObjectArray("args"),
 				}
@@ -178,26 +180,32 @@ func (em *eventManager) BlockchainEvent(event *blockchain.EventWithSubscription)
 	})
 }
 
-func changeStatusPrimary(primaryUrl string, txId string, _status int) {
+func changeStatusPrimary(primaryURL string, txID string, _status int) {
 	values := map[string]map[string]interface{}{
 		"input": {
-			"txId":    txId,
+			"txId":    txID,
 			"_status": _status,
 		},
 	}
-	json_data, _ := json.Marshal(values)
-	url := primaryUrl + "/api/v1/namespaces/default/apis/cross-chain/invoke/changeStatus"
-	http.Post(url, "application/json", bytes.NewBuffer(json_data))
+	jsonData, _ := json.Marshal(values)
+	url := primaryURL + "/api/v1/namespaces/default/apis/cross-chain/invoke/changeStatus"
+	_, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData)) //nolint
+	if err != nil {
+		fmt.Print(err.Error())
+	}
 }
 
-func changeStatusNetwork(networkUrl string, txId string, _status int) {
+func changeStatusNetwork(networkURL string, txID string, _status int) {
 	values := map[string]map[string]interface{}{
 		"input": {
-			"txId":    txId,
+			"txId":    txID,
 			"_status": _status,
 		},
 	}
-	json_data, _ := json.Marshal(values)
-	url := networkUrl + "/api/v1/namespaces/default/apis/cross-network/invoke/changeStatus"
-	http.Post(url, "application/json", bytes.NewBuffer(json_data))
+	jsonData, _ := json.Marshal(values)
+	url := networkURL + "/api/v1/namespaces/default/apis/cross-network/invoke/changeStatus"
+	_, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData)) //nolint
+	if err != nil {
+		fmt.Print(err.Error())
+	}
 }

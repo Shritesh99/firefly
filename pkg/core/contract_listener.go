@@ -1,4 +1,4 @@
-// Copyright © 2022 Kaleido, Inc.
+// Copyright © 2023 Kaleido, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -27,9 +27,9 @@ import (
 
 type PreparePrimaryTx struct {
 	TxID             string
-	PrimaryNetworkId string
+	PrimaryNetworkID string
 	NetworkID        string
-	Url              string
+	URL              string
 	InvocationID     string
 	Args             interface{}
 }
