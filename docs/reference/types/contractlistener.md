@@ -55,9 +55,7 @@ nav_order: 9
     "topic": "app1_topic",
     "options": {
         "firstEvent": "newest"
-    },
-    "CCM": null,
-    "CNM": null
+    }
 }
 ```
 

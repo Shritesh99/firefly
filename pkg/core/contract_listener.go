@@ -51,12 +51,6 @@ type ContractListener struct {
 	Signature string                   `ffstruct:"ContractListener" json:"signature" ffexcludeinput:"true"`
 	Topic     string                   `ffstruct:"ContractListener" json:"topic,omitempty"`
 	Options   *ContractListenerOptions `ffstruct:"ContractListener" json:"options,omitempty"`
-	CCM       interface {
-		ProcessTx(ppTx PreparePrimaryTx)
-	}
-	CNM interface {
-		ProcessTx(pnTx ConfirmNetworkTx)
-	}
 }
 
 type ContractListenerWithStatus struct {

@@ -1,7 +1,5 @@
 {
-  "go.formatFlags": [
-    "-s"
-  ],
+  "go.formatFlags": ["-s"],
   "go.lintTool": "golangci-lint",
   "cSpell.words": [
     "actioned",
@@ -86,5 +84,6 @@
     "wsconfig",
     "wsconn"
   ],
-  "go.testTimeout": "10s"
+  "go.testTimeout": "10s",
+  "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools"
 }

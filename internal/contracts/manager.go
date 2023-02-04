@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/firefly-common/pkg/ffapi"
 	"github.com/hyperledger/firefly-common/pkg/fftypes"
 	"github.com/hyperledger/firefly-common/pkg/i18n"
-	"github.com/hyperledger/firefly-common/pkg/log"
 	"github.com/hyperledger/firefly/internal/coremsgs"
 	"github.com/hyperledger/firefly/internal/identity"
 	"github.com/hyperledger/firefly/internal/operations"
@@ -565,13 +564,6 @@ func (cm *contractManager) resolveEvent(ctx context.Context, ffi *fftypes.FFIRef
 func (cm *contractManager) AddContractListener(ctx context.Context, listener *core.ContractListenerInput) (output *core.ContractListener, err error) {
 	listener.ID = fftypes.NewUUID()
 	listener.Namespace = cm.namespace
-	log.L(ctx).Errorf("Listener Name %s", listener.Name)
-	if listener.Name == "PreparePrimaryTransaction" {
-		listener.CCM = NewCrossChainManager()
-	}
-	if listener.Name == "NetworkPrimaryTransaction" {
-		listener.CNM = NewCrossNetworkManager()
-	}
 
 	if listener.Name != "" {
 		if err := fftypes.ValidateFFNameField(ctx, listener.Name, "name"); err != nil {
