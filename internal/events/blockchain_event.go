@@ -30,6 +30,7 @@ import (
 )
 
 func buildBlockchainEvent(ns string, subID *fftypes.UUID, event *blockchain.Event, tx *core.BlockchainTransactionRef) *core.BlockchainEvent {
+	fmt.Printf("The Event is %s \n", event.Name)
 	ev := &core.BlockchainEvent{
 		ID:         fftypes.NewUUID(),
 		Namespace:  ns,
@@ -43,28 +44,28 @@ func buildBlockchainEvent(ns string, subID *fftypes.UUID, event *blockchain.Even
 	}
 
 	if event.Name == "PrimaryTxStatus" {
-		if event.Output.GetString("PrimaryTransactionStatusType") == "PrimaryTransactionStatusType.PRIMARY_TRANSACTION_COMMITTED" {
+		switch status := event.Output.GetString("PrimaryTransactionStatusType"); status {
+		case "PrimaryTransactionStatusType.PRIMARY_TRANSACTION_COMMITTED":
 			changeStatusNetwork(event.Output.GetString("networkUrl"), event.Output.GetString("txId"), 4)
+
+			err := processConfirmTx(event.Output.GetString("txId"), event.Output.GetString("networkUrl"), true)
+			if err != nil {
+				fmt.Print(err.Error())
+			}
 		}
 	}
 	if event.Name == "NetworkTxStatus" {
 		switch status := event.Output.GetString("NetworkTransactionStatusType"); status {
-		case "PrimaryTransactionStatusType.NETWORK_TRANSACTION_STARTED":
+		case "NetworkTransactionStatusType.NETWORK_TRANSACTION_STARTED":
 			changeStatusPrimary(event.Output.GetString("primaryNetworkUrl"), event.Output.GetString("txId"), 2)
-		case "PrimaryTransactionStatusType.NETWORK_TRANSACTION_PREPARED":
+		case "NetworkTransactionStatusType.NETWORK_TRANSACTION_PREPARED":
 			changeStatusPrimary(event.Output.GetString("primaryNetworkUrl"), event.Output.GetString("txId"), 3)
-			values := map[string]map[string]interface{}{
-				"input": {
-					"txId": event.Output.GetString("txId"),
-				},
-			}
-			jsonData, _ := json.Marshal(values)
-			url := event.Output.GetString("primaryNetworkUrl") + "/api/v1/namespaces/default/apis/cross-chain/invoke/confirmDoCross"
-			_, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData)) //nolint
+
+			err := processConfirmTx(event.Output.GetString("txId"), event.Output.GetString("primaryNetworkUrl"), false)
 			if err != nil {
 				fmt.Print(err.Error())
 			}
-		case "PrimaryTransactionStatusType.NETWORK_TRANSACTION_COMMITTED":
+		case "NetworkTransactionStatusType.NETWORK_TRANSACTION_COMMITTED":
 			changeStatusPrimary(event.Output.GetString("primaryNetworkUrl"), event.Output.GetString("txId"), 5)
 		}
 	}
@@ -79,18 +80,11 @@ func buildBlockchainEvent(ns string, subID *fftypes.UUID, event *blockchain.Even
 			Args:             event.Output.GetObjectArray("args"),
 		}
 
-		err := ProcessTx(ppTx)
+		err := processPreparePrimaryTransaction(ppTx)
 		if err != nil {
 			fmt.Print(err.Error())
 		}
 	}
-	// if event.Name == "ConfirmNetworkTransaction" {
-	// 	cnTx := core.ConfirmNetworkTx{
-	// 		TxID:    event.Output.GetString("txId"),
-	// 		Success: event.Output.GetBool("success"),
-	// 	}
-	// 	ProcessTx(cnTx)
-	// }
 	if tx != nil {
 		ev.TX = *tx
 	}
@@ -199,6 +193,7 @@ func changeStatusPrimary(primaryURL string, txID string, _status int) {
 }
 
 func changeStatusNetwork(networkURL string, txID string, _status int) {
+	fmt.Printf("Changing State of %s to %d \n", txID, _status)
 	values := map[string]map[string]interface{}{
 		"input": {
 			"txId":    txID,
@@ -211,9 +206,10 @@ func changeStatusNetwork(networkURL string, txID string, _status int) {
 	if err != nil {
 		fmt.Print(err.Error())
 	}
+	fmt.Printf("State of %s is %d \n", txID, _status)
 }
 
-func ProcessTx(ppTx core.PreparePrimaryTx) error {
+func processPreparePrimaryTransaction(ppTx core.PreparePrimaryTx) error {
 	values := map[string]map[string]interface{}{
 		"input": {
 			"txId":             ppTx.TxID,
@@ -231,8 +227,33 @@ func ProcessTx(ppTx core.PreparePrimaryTx) error {
 	url := ppTx.URL + "/api/v1/namespaces/default/apis/cross-network/invoke/doNetwork"
 
 	_, err = http.Post(url, "application/json", bytes.NewBuffer(jsonData)) //nolint
+
+}
+
+func processConfirmTx(txId string, typeUrl string, isNetwork bool) error {
+	values := map[string]map[string]interface{}{
+		"input": {
+			"txId": txId,
+		},
+	}
+	jsonData, _ := json.Marshal(values)
+
+	url := fmt.Sprintf("%s/api/v1/namespaces/default/apis/%s/invoke/%s", typeUrl, parseUrl(isNetwork, true), parseUrl(isNetwork, false))
+	_, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData)) //nolint
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func parseUrl(isNetwork bool, first bool) string {
+	if isNetwork && first {
+		return "cross-network"
+	} else if isNetwork && !first {
+		return "confirmDoNetwork"
+	} else if !isNetwork && first {
+		return "cross-chain"
+	} else {
+		return "confirmDoCross"
+	}
 }
