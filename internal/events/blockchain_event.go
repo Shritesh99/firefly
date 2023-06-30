@@ -227,7 +227,10 @@ func processPreparePrimaryTransaction(ppTx core.PreparePrimaryTx) error {
 	url := ppTx.URL + "/api/v1/namespaces/default/apis/cross-network/invoke/doNetwork"
 
 	_, err = http.Post(url, "application/json", bytes.NewBuffer(jsonData)) //nolint
-
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func processConfirmTx(txId string, typeUrl string, isNetwork bool) error {
