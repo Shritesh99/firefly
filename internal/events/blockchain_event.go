@@ -44,8 +44,7 @@ func buildBlockchainEvent(ns string, subID *fftypes.UUID, event *blockchain.Even
 	}
 
 	if event.Name == "PrimaryTxStatus" {
-		switch status := event.Output.GetString("PrimaryTransactionStatusType"); status {
-		case "PrimaryTransactionStatusType.PRIMARY_TRANSACTION_COMMITTED":
+		if event.Output.GetString("PrimaryTransactionStatusType") == "PrimaryTransactionStatusType.PRIMARY_TRANSACTION_COMMITTED" {
 			changeStatusNetwork(event.Output.GetString("networkUrl"), event.Output.GetString("txId"), 4)
 
 			err := processConfirmTx(event.Output.GetString("txId"), event.Output.GetString("networkUrl"), true)
@@ -233,15 +232,15 @@ func processPreparePrimaryTransaction(ppTx core.PreparePrimaryTx) error {
 	return nil
 }
 
-func processConfirmTx(txId string, typeUrl string, isNetwork bool) error {
+func processConfirmTx(txID string, typeURL string, isNetwork bool) error {
 	values := map[string]map[string]interface{}{
 		"input": {
-			"txId": txId,
+			"txId": txID,
 		},
 	}
 	jsonData, _ := json.Marshal(values)
 
-	url := fmt.Sprintf("%s/api/v1/namespaces/default/apis/%s/invoke/%s", typeUrl, parseUrl(isNetwork, true), parseUrl(isNetwork, false))
+	url := fmt.Sprintf("%s/api/v1/namespaces/default/apis/%s/invoke/%s", typeURL, parseURL(isNetwork, true), parseURL(isNetwork, false))
 	_, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData)) //nolint
 	if err != nil {
 		return err
@@ -249,14 +248,15 @@ func processConfirmTx(txId string, typeUrl string, isNetwork bool) error {
 	return nil
 }
 
-func parseUrl(isNetwork bool, first bool) string {
-	if isNetwork && first {
+func parseURL(isNetwork bool, first bool) string {
+	switch {
+	case isNetwork && first:
 		return "cross-network"
-	} else if isNetwork && !first {
+	case isNetwork && !first:
 		return "confirmDoNetwork"
-	} else if !isNetwork && first {
+	case !isNetwork && first:
 		return "cross-chain"
-	} else {
+	default:
 		return "confirmDoCross"
 	}
 }
