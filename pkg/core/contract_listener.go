@@ -31,7 +31,7 @@ type PreparePrimaryTx struct {
 	NetworkID        string
 	URL              string
 	InvocationID     string
-	Args             interface{}
+	Args             string
 }
 
 type ConfirmNetworkTx struct {

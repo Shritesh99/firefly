@@ -30,7 +30,14 @@ import (
 )
 
 func buildBlockchainEvent(ns string, subID *fftypes.UUID, event *blockchain.Event, tx *core.BlockchainTransactionRef) *core.BlockchainEvent {
-	fmt.Printf("The Event is %s \n", event.Name)
+	fmt.Printf("[CrossChain]: The Event is %s \n", event.Name)
+
+	out, err := json.Marshal(event.Output)
+	if err != nil {
+		fmt.Println("[CrossChain]: Event -> Error: ", err)
+	}
+	fmt.Printf("[CrossChain]: Output: %s \n", string(out))
+
 	ev := &core.BlockchainEvent{
 		ID:         fftypes.NewUUID(),
 		Namespace:  ns,
@@ -44,45 +51,63 @@ func buildBlockchainEvent(ns string, subID *fftypes.UUID, event *blockchain.Even
 	}
 
 	if event.Name == "PrimaryTxStatus" {
-		if event.Output.GetString("PrimaryTransactionStatusType") == "PrimaryTransactionStatusType.PRIMARY_TRANSACTION_COMMITTED" {
+		fmt.Printf("[CrossChain]: PrimaryTxStatus on: txId: %s, satus: %s \n", event.Output.GetString("txId"), event.Output.GetInteger("status").String())
+		if event.Output.GetInteger("status").String() == "4" {
+			fmt.Printf("[CrossChain]: PrimaryTxStatus -> changeStatusNetwork on: networkUrl: %s, txId: %s \n", event.Output.GetString("networkUrl"), event.Output.GetString("txId"))
 			changeStatusNetwork(event.Output.GetString("networkUrl"), event.Output.GetString("txId"), 4)
+			fmt.Printf("[CrossChain]: Done PrimaryTxStatus -> changeStatusNetwork on: networkUrl: %s, txId: %s \n", event.Output.GetString("networkUrl"), event.Output.GetString("txId"))
 
+			fmt.Printf("[CrossChain]: PrimaryTxStatus -> processConfirmTx on: networkUrl: %s, txId: %s \n", event.Output.GetString("networkUrl"), event.Output.GetString("txId"))
 			err := processConfirmTx(event.Output.GetString("txId"), event.Output.GetString("networkUrl"), true)
 			if err != nil {
-				fmt.Print(err.Error())
+				fmt.Println("[CrossChain]: PrimaryTxStatus -> processConfirmTx -> Error: ", err)
 			}
+			fmt.Printf("[CrossChain]: Done PrimaryTxStatus -> processConfirmTx on: networkUrl: %s, txId: %s \n", event.Output.GetString("networkUrl"), event.Output.GetString("txId"))
 		}
+		fmt.Printf("[CrossChain]: Done PrimaryTxStatus on: %s \n", event.Output.GetString("status"))
 	}
 	if event.Name == "NetworkTxStatus" {
-		switch status := event.Output.GetString("NetworkTransactionStatusType"); status {
-		case "NetworkTransactionStatusType.NETWORK_TRANSACTION_STARTED":
+		fmt.Printf("[CrossChain]: NetworkTxStatus on: txId: %s, status: %s \n", event.Output.GetString("txId"), event.Output.GetInteger("status").String())
+		switch status := event.Output.GetInteger("status").String(); status {
+		case "2":
+			fmt.Printf("[CrossChain]: NetworkTxStatus -> NetworkTransactionStatusType.NETWORK_TRANSACTION_STARTED -> changeStatusPrimary on: primaryNetworkUrl %s, txId: %s \n", event.Output.GetString("primaryNetworkUrl"), event.Output.GetString("txId"))
 			changeStatusPrimary(event.Output.GetString("primaryNetworkUrl"), event.Output.GetString("txId"), 2)
-		case "NetworkTransactionStatusType.NETWORK_TRANSACTION_PREPARED":
+			fmt.Printf("[CrossChain]: Done NetworkTxStatus -> changeStatusPrimary on: primaryNetworkUrl %s, txId: %s \n", event.Output.GetString("primaryNetworkUrl"), event.Output.GetString("txId"))
+		case "3":
+			fmt.Printf("[CrossChain]: NetworkTxStatus -> NetworkTransactionStatusType.NETWORK_TRANSACTION_PREPARED -> changeStatusPrimary on: primaryNetworkUrl %s, txId: %s \n", event.Output.GetString("primaryNetworkUrl"), event.Output.GetString("txId"))
 			changeStatusPrimary(event.Output.GetString("primaryNetworkUrl"), event.Output.GetString("txId"), 3)
+			fmt.Printf("[CrossChain]: Done NetworkTxStatus -> NetworkTransactionStatusType.NETWORK_TRANSACTION_PREPARED -> changeStatusPrimary on: primaryNetworkUrl %s, txId: %s \n", event.Output.GetString("primaryNetworkUrl"), event.Output.GetString("txId"))
 
+			fmt.Printf("[CrossChain]: NetworkTxStatus -> NetworkTransactionStatusType.NETWORK_TRANSACTION_PREPARED -> processConfirmTx on: primaryNetworkUrl %s, txId: %s \n", event.Output.GetString("primaryNetworkUrl"), event.Output.GetString("txId"))
 			err := processConfirmTx(event.Output.GetString("txId"), event.Output.GetString("primaryNetworkUrl"), false)
 			if err != nil {
-				fmt.Print(err.Error())
+				fmt.Println("[CrossChain]: NetworkTxStatus -> NetworkTransactionStatusType.NETWORK_TRANSACTION_PREPARED -> processConfirmTx -> Error: ", err)
 			}
-		case "NetworkTransactionStatusType.NETWORK_TRANSACTION_COMMITTED":
+			fmt.Printf("[CrossChain]: Done NetworkTxStatus -> NetworkTransactionStatusType.NETWORK_TRANSACTION_PREPARED -> processConfirmTx on: primaryNetworkUrl %s, txId: %s \n", event.Output.GetString("primaryNetworkUrl"), event.Output.GetString("txId"))
+		case "5":
+			fmt.Printf("[CrossChain]: NetworkTxStatus -> NetworkTransactionStatusType.NETWORK_TRANSACTION_COMMITTED -> changeStatusPrimary on: primaryNetworkUrl %s, txId: %s \n", event.Output.GetString("primaryNetworkUrl"), event.Output.GetString("txId"))
 			changeStatusPrimary(event.Output.GetString("primaryNetworkUrl"), event.Output.GetString("txId"), 5)
+			fmt.Printf("[CrossChain]: Done NetworkTxStatus -> NetworkTransactionStatusType.NETWORK_TRANSACTION_COMMITTED -> changeStatusPrimary on: primaryNetworkUrl %s, txId: %s \n", event.Output.GetString("primaryNetworkUrl"), event.Output.GetString("txId"))
 		}
+		fmt.Printf("[CrossChain]: Done NetworkTxStatus on: %s \n", event.Output.GetString("status"))
 	}
 
 	if event.Name == "PreparePrimaryTransaction" {
+		fmt.Printf("[CrossChain]: PreparePrimaryTransaction: TxID: %s, PrimaryNetworkID: %s, NetworkID: %s, URL: %s, InvocationID: %s, Args: %s \n", event.Output.GetString("txId"), event.Output.GetString("primaryNetworkId"), event.Output.GetString("networkId"), event.Output.GetString("url"), event.Output.GetString("invocationId"), event.Output.GetString("args"))
 		ppTx := core.PreparePrimaryTx{
 			TxID:             event.Output.GetString("txId"),
 			PrimaryNetworkID: event.Output.GetString("primaryNetworkId"),
 			NetworkID:        event.Output.GetString("networkId"),
 			URL:              event.Output.GetString("url"),
 			InvocationID:     event.Output.GetString("invocationId"),
-			Args:             event.Output.GetObjectArray("args"),
+			Args:             event.Output.GetString("args"),
 		}
-
+		fmt.Printf("[CrossChain]: PreparePrimaryTransaction -> processPreparePrimaryTransaction: TxID: %s, PrimaryNetworkID: %s, NetworkID: %s, URL: %s, InvocationID: %s, Args: %s \n", event.Output.GetString("txId"), event.Output.GetString("primaryNetworkId"), event.Output.GetString("networkId"), event.Output.GetString("url"), event.Output.GetString("invocationId"), event.Output.GetString("args"))
 		err := processPreparePrimaryTransaction(ppTx)
 		if err != nil {
-			fmt.Print(err.Error())
+			fmt.Println("[CrossChain]: PreparePrimaryTransaction -> processPreparePrimaryTransaction -> Error: ", err)
 		}
+		fmt.Printf("[CrossChain]: Done PreparePrimaryTransaction -> processPreparePrimaryTransaction: TxID: %s, PrimaryNetworkID: %s, NetworkID: %s, URL: %s, InvocationID: %s, Args: %s \n", event.Output.GetString("txId"), event.Output.GetString("primaryNetworkId"), event.Output.GetString("networkId"), event.Output.GetString("url"), event.Output.GetString("invocationId"), event.Output.GetString("args"))
 	}
 	if tx != nil {
 		ev.TX = *tx
@@ -133,10 +158,8 @@ func (em *eventManager) maybePersistBlockchainEvent(ctx context.Context, chainEv
 	}
 	topic := em.getTopicForChainListener(listener)
 	ffEvent := core.NewEvent(core.EventTypeBlockchainEventReceived, chainEvent.Namespace, chainEvent.ID, chainEvent.TX.ID, topic)
-	if err := em.database.InsertEvent(ctx, ffEvent); err != nil {
-		return err
-	}
-	return nil
+	err := em.database.InsertEvent(ctx, ffEvent)
+	return err
 }
 
 func (em *eventManager) emitBlockchainEventMetric(event *blockchain.Event) {
@@ -177,6 +200,7 @@ func (em *eventManager) BlockchainEvent(event *blockchain.EventWithSubscription)
 }
 
 func changeStatusPrimary(primaryURL string, txID string, _status int) {
+	fmt.Printf("[CrossChain]: changeStatusPrimary on: primaryURL: %s, txId: %s, status: %d, \n", primaryURL, txID, _status)
 	values := map[string]map[string]interface{}{
 		"input": {
 			"txId":    txID,
@@ -184,15 +208,16 @@ func changeStatusPrimary(primaryURL string, txID string, _status int) {
 		},
 	}
 	jsonData, _ := json.Marshal(values)
-	url := primaryURL + "/api/v1/namespaces/default/apis/cross-chain/invoke/changeStatus"
+	url := fmt.Sprintf("%s/api/v1/namespaces/default/apis/cross-chain/invoke/changeStatus", primaryURL)
 	_, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData)) //nolint
 	if err != nil {
-		fmt.Print(err.Error())
+		fmt.Println("[CrossChain]: changeStatusPrimary -> Error: ", err)
 	}
+	fmt.Printf("[CrossChain]: Done changeStatusPrimary on: primaryURL: %s, txId: %s, status: %d, \n", primaryURL, txID, _status)
 }
 
 func changeStatusNetwork(networkURL string, txID string, _status int) {
-	fmt.Printf("Changing State of %s to %d \n", txID, _status)
+	fmt.Printf("[CrossChain]: changeStatusNetwork on: networkURL: %s, txId: %s, status: %d, \n", networkURL, txID, _status)
 	values := map[string]map[string]interface{}{
 		"input": {
 			"txId":    txID,
@@ -200,15 +225,17 @@ func changeStatusNetwork(networkURL string, txID string, _status int) {
 		},
 	}
 	jsonData, _ := json.Marshal(values)
-	url := networkURL + "/api/v1/namespaces/default/apis/cross-network/invoke/changeStatus"
+	url := fmt.Sprintf("%s/api/v1/namespaces/default/apis/cross-network/invoke/changeStatus", networkURL)
 	_, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData)) //nolint
 	if err != nil {
-		fmt.Print(err.Error())
+		fmt.Println("[CrossChain]: changeStatusNetwork -> Error: ", err)
 	}
-	fmt.Printf("State of %s is %d \n", txID, _status)
+	fmt.Printf("[CrossChain]: Done changeStatusNetwork on: networkURL: %s, txId: %s, status: %d, \n", networkURL, txID, _status)
 }
 
 func processPreparePrimaryTransaction(ppTx core.PreparePrimaryTx) error {
+	fmt.Printf("[CrossChain]: processPreparePrimaryTransaction \n")
+
 	values := map[string]map[string]interface{}{
 		"input": {
 			"txId":             ppTx.TxID,
@@ -219,20 +246,21 @@ func processPreparePrimaryTransaction(ppTx core.PreparePrimaryTx) error {
 		},
 	}
 	jsonData, err := json.Marshal(values)
-
 	if err != nil {
-		return err
+		fmt.Println("[CrossChain]: processPreparePrimaryTransaction -> Error: ", err)
 	}
-	url := ppTx.URL + "/api/v1/namespaces/default/apis/cross-network/invoke/doNetwork"
+	url := fmt.Sprintf("%s/api/v1/namespaces/default/apis/cross-network/invoke/doNetwork", ppTx.URL)
 
 	_, err = http.Post(url, "application/json", bytes.NewBuffer(jsonData)) //nolint
 	if err != nil {
-		return err
+		fmt.Println("[CrossChain]: processPreparePrimaryTransaction -> Error: ", err)
 	}
-	return nil
+	fmt.Printf("[CrossChain]: Done processPreparePrimaryTransaction \n")
+	return err
 }
 
 func processConfirmTx(txID string, typeURL string, isNetwork bool) error {
+	fmt.Printf("[CrossChain]: processConfirmTx \n")
 	values := map[string]map[string]interface{}{
 		"input": {
 			"txId": txID,
@@ -243,9 +271,10 @@ func processConfirmTx(txID string, typeURL string, isNetwork bool) error {
 	url := fmt.Sprintf("%s/api/v1/namespaces/default/apis/%s/invoke/%s", typeURL, parseURL(isNetwork, true), parseURL(isNetwork, false))
 	_, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData)) //nolint
 	if err != nil {
-		return err
+		fmt.Println("[CrossChain]: processConfirmTx -> Error: ", err)
 	}
-	return nil
+	fmt.Printf("[CrossChain]: Done processConfirmTx \n")
+	return err
 }
 
 func parseURL(isNetwork bool, first bool) string {
