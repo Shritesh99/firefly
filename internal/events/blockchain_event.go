@@ -109,6 +109,14 @@ func buildBlockchainEvent(ns string, subID *fftypes.UUID, event *blockchain.Even
 		}
 		fmt.Printf("[CrossChain]: Done PreparePrimaryTransaction -> processPreparePrimaryTransaction: TxID: %s, PrimaryNetworkID: %s, NetworkID: %s, URL: %s, InvocationID: %s, Args: %s \n", event.Output.GetString("txId"), event.Output.GetString("primaryNetworkId"), event.Output.GetString("networkId"), event.Output.GetString("url"), event.Output.GetString("invocationId"), event.Output.GetString("args"))
 	}
+	if event.Name == "ConfirmNetworkTransaction" {
+		fmt.Printf("[CrossChain]: ConfirmNetworkTransaction: TxID: %s, boolean success: %t, data: %s \n", event.Output.GetString("txId"), event.Output.GetBool("success"), event.Output.GetString("data"))
+		err := prosessConfirmNetworkTransaction(event.Output.GetString("txId"), event.Output.GetBool("success"), event.Output.GetString("data"), event.Output.GetString("primaryNetworkUrl"))
+		if err != nil {
+			fmt.Println("[CrossChain]: ConfirmNetworkTransaction -> prosessConfirmNetworkTransaction -> Error: ", err)
+		}
+		fmt.Printf("[CrossChain]: Done ConfirmNetworkTransaction: TxID: %s, boolean success: %t, data: %s \n", event.Output.GetString("txId"), event.Output.GetBool("success"), event.Output.GetString("data"))
+	}
 	if tx != nil {
 		ev.TX = *tx
 	}
@@ -288,4 +296,26 @@ func parseURL(isNetwork bool, first bool) string {
 	default:
 		return "confirmDoCross"
 	}
+}
+
+func prosessConfirmNetworkTransaction(txID string, success bool, data string, primaryNetworkUrl string) error {
+	fmt.Printf("[CrossChain]: prosessConfirmNetworkTransaction \n")
+	values := map[string]map[string]interface{}{
+		"input": {
+			"txId": txID,
+			"data": nil,
+		},
+	}
+	if success {
+		values["input"]["data"] = data
+	}
+	jsonData, _ := json.Marshal(values)
+
+	url := fmt.Sprintf("%s/api/v1/namespaces/default/apis/cross-chain/invoke/finishPrimaryTransaction", primaryNetworkUrl)
+	_, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData)) //nolint
+	if err != nil {
+		fmt.Println("[CrossChain]: prosessConfirmNetworkTransaction -> Error: ", err)
+	}
+	fmt.Printf("[CrossChain]: prosessConfirmNetworkTransaction \n")
+	return err
 }
