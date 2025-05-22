@@ -1,0 +1,19 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: 'Hyperledger Firefly Mesher '
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Shritesh
+    family-names: Jamulkar
+    email: jamulkas@tcd.ie
+repository-code: 'https://github.com/Shritesh99/firefly/tree/service-mesh'
+abstract: >-
+  Hyperledger FireFly - Mesher, an off-chain Hyperledger
+  Firefly Supernode that orchestrates event-based
+  interactions between the participating blockchain networks
+  of a cross-chain transaction.
